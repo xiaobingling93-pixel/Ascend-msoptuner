@@ -1,0 +1,8 @@
+__pycache__
+.vscode/
+.idea/
+build/
+output/
+cmake-build-debug/
+
+.codemate
