@@ -31,12 +31,6 @@ def exec_cmd(cmd):
         sys.exit(result.returncode)
 
 
-def update_submodle():
-    logging.info("============ start download thirdparty code using git submodule ============")
-    cmd = ["git", "submodule", "update", "--init", "--recursive", "--depth=1", "--jobs=4"]
-    exec_cmd(cmd)
-
-
 def execute_build(build_path, cmake_cmd, make_cmd):
     if not os.path.exists(build_path):
         os.makedirs(build_path, mode=0o755)
@@ -98,7 +92,9 @@ if __name__ == "__main__":
     cmake_cmd = ["cmake", "..", "-DBUILD_TESTS=ON"]
     make_cmd = ["make", "-j", str(cpu_cores)]
 
-    update_submodle()
+    if 'local' not in args.command:
+        from download_dependencies import update_submodule
+        update_submodule(args)
 
     if not skip_build:
         execute_build(build_path, cmake_cmd, make_cmd)
