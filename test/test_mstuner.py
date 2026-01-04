@@ -55,6 +55,14 @@ class MsTunerCatlassTest(unittest.TestCase):
             shutil.rmtree(MsTunerCatlassTest.MSTUNER_TEST_TEMP_PATH, ignore_errors=True)
 
 
+    def is_npu_smi_available(self):
+        try:
+            result = subprocess.run(['npu-smi', 'info'], capture_output=True, text=True)
+            return result.returncode == 0
+        except:
+            return False
+
+
     def compile_lib_catlass_kernels(self, kernel_name: str):
         """编译指定CatLASSS内核库"""
         macro_str = '-DCATLASS_LIBRARY_KERNELS=' + kernel_name
@@ -108,9 +116,6 @@ class MsTunerCatlassTest(unittest.TestCase):
         csv_file_path = os.path.join(MsTunerCatlassTest.MSTUNER_TEST_TEMP_PATH, csv_file_name)
 
         result = self.compile_lib_catlass_kernels(case_name)
-        if len(result.stdout) != 0:
-            self.assertIn("No npu-smi detected", result.stdout)
-            return
         self.assertEqual(
             result.returncode, 0,
             f'build libcatlass_kernels.so for {case_name} failed: {result.stderr}'
@@ -128,6 +133,9 @@ class MsTunerCatlassTest(unittest.TestCase):
     ]
 
     def test_all_cases(self):
+        if not self.is_npu_smi_available():
+            print(f"npu-smi info command is not available. Tests aborted.")
+            return
         for case in self.mstuner_cases:
             self.run_one_case(case)
 
