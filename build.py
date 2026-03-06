@@ -15,91 +15,81 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 # -------------------------------------------------------------------------
-
-import os
-import sys
-import logging
-import subprocess
-import multiprocessing
 import argparse
+import logging
+import multiprocessing
+import os
+import subprocess
+import sys
+import traceback
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def exec_cmd(cmd):
-    result = subprocess.run(cmd, capture_output=False, text=True, timeout=3600)
-    if result.returncode != 0:
-        logging.error("execute command %s failed, please check the log", " ".join(cmd))
-        sys.exit(result.returncode)
+class BuildManager:
+    """
+    统一构建管理：依赖拉取 → CMake 配置 → 并行编译 → 安装 / 测试。
 
+    用法:
+        python build.py                  完整构建（拉取依赖 + Release 编译）
+        python build.py local            本地构建（跳过依赖拉取, Release 编译）
+        python build.py test             单元测试（拉取依赖 + Debug 编译 + 执行测试）
+        python build.py test local       单元测试（跳过依赖拉取, Debug 编译 + 执行测试）
+        python build.py -r <revision>    指定依赖的内部源码仓(例如msopcom)的 Git 分支/标签/commit
 
-def execute_build(build_path, cmake_cmd, make_cmd):
-    if not os.path.exists(build_path):
-        os.makedirs(build_path, mode=0o755)
-    os.chdir(build_path)
-    exec_cmd(cmake_cmd)
-    exec_cmd(make_cmd)
+    参数说明:
+        - 参数: command : 构建动作: 为空时为全构建, local 为跳过依赖下载, test 为运行单元测试。
+        - 参数: -r, --revision : 指定 Git 修订版本或标签用于依赖检出。
+    """
 
+    def __init__(self):
+        self.project_root = Path(__file__).resolve().parent
+        self.build_jobs = multiprocessing.cpu_count()
+        argument_parser = argparse.ArgumentParser(description='Build the project and optionally run tests.')
+        argument_parser.add_argument('command', nargs='*', default=[],
+                                     choices=[[], 'local', 'test'],
+                                     help='Build action: omit for full build, "local" to skip dependency download, "test" to run unit tests')
+        argument_parser.add_argument('-r', '--revision',
+                                     help='Specify Git revision for internal dependent repo (e.g., msopcom).')
+        self.parsed_arguments = argument_parser.parse_args()
 
-def execute_test(build_path, test_type):
-    os.chdir(build_path)
-    if test_type == "python":
-        test_script_path = os.path.join(os.path.dirname(build_path), "test", "test_mstuner.py")
-        if os.path.exists(test_script_path):
-            os.chdir(os.path.dirname(test_script_path))
-            exec_cmd([sys.executable, os.path.basename(test_script_path)])
+    def _execute_command(self, command_sequence, timeout_seconds=36000, cwd=None, env=None):
+        logging.info("Running: %s", " ".join(command_sequence))
+        subprocess.run(command_sequence, timeout=timeout_seconds, check=True, cwd=cwd, env=env)
+
+    def run(self):
+        os.chdir(self.project_root)
+
+        # 在非 local 场景下按需更新依赖；在 local 场景下仅使用本地已有代码，不更新依赖。
+        if 'local' not in self.parsed_arguments.command:
+            from download_dependencies import DependencyManager
+            DependencyManager(self.parsed_arguments).run()
+
+        if 'test' in self.parsed_arguments.command:
+            # -------------------- 单元测试 --------------------
+            unit_test_build_dir = self.project_root / "build_ut"
+            unit_test_build_dir.mkdir(exist_ok=True)
+            os.chdir(unit_test_build_dir)
+
+            self._execute_command(["cmake", "..", "-DBUILD_TESTS=ON"])
+            self._execute_command(["make", "-j", str(self.build_jobs)])
+
+            test_script_dir = self.project_root / "test"
+            self._execute_command([sys.executable, "test_mstuner.py"], cwd=str(test_script_dir))
         else:
-            logging.error("Test script %s not found", test_script_path)
-            sys.exit(1)
+            # -------------------- 产品构建 --------------------
+            product_build_dir = self.project_root / "build"
+            product_build_dir.mkdir(exist_ok=True)
+            os.chdir(product_build_dir)
 
-
-def is_build_complete(build_path):
-    required_files = [
-        os.path.join(build_path, "lib64", "libkernels.so"),
-        os.path.join(build_path, "bin", "mstuner_catlass")
-    ]
-    for file_path in required_files:
-        if not os.path.exists(file_path):
-            return False
-    return True
-
-
-def create_arg_parser():
-    parser = argparse.ArgumentParser(description='Build script with optional testing')
-    parser.add_argument('command', nargs='*', default='[]', 
-                       choices=['[]', 'local', 'test'],
-                       help='Command to execute (python build.py [ |local|test]):\n'
-                            '  (default): normal build\n'
-                            '  local: local-only build without updating submodules\n'
-                            '  test: build and run tests')
-    parser.add_argument('-r', '--revision',
-                        help="Build with specific revision or tag")
-    return parser
+            self._execute_command(["cmake", "..", "-DBUILD_TESTS=ON"])
+            self._execute_command(["make", "-j", str(self.build_jobs)])
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    parser = create_arg_parser()
-    args = parser.parse_args()
-
-    current_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-    os.chdir(current_dir)
-    
-    cpu_cores = multiprocessing.cpu_count()
-    build_path = os.path.join(current_dir, "build")
-
-    should_check_build = ('test' in args.command)
-    skip_build = should_check_build and is_build_complete(build_path)
-
-    cmake_cmd = ["cmake", "..", "-DBUILD_TESTS=ON"]
-    make_cmd = ["make", "-j", str(cpu_cores)]
-
-    if 'local' not in args.command:
-        from download_dependencies import update_submodule
-        update_submodule(args)
-
-    if not skip_build:
-        execute_build(build_path, cmake_cmd, make_cmd)
-    else:
-        logging.info("Build artifacts already exist, skipping build step.")
-
-    if 'test' in args.command:
-        execute_test(build_path, "python")
+    try:
+        BuildManager().run()
+    except Exception:
+        logging.error(f"Unexpected error: {traceback.format_exc()}")
+        sys.exit(1)
