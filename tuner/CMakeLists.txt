@@ -56,6 +56,8 @@ target_link_libraries(mstuner_catlass PRIVATE
     c_sec
     ascendcl
     ascend_hal
+    unified_dlog
+    profapi
     dl
     runtime
     ${PROJECT_BUILD_DIR}/lib64/libkernels.so

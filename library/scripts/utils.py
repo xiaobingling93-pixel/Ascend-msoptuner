@@ -69,7 +69,8 @@ using namespace Catlass;
         )
 
         path = os.path.join(workspace_dir, self.file_name)
-        with open(path, "w") as f:
+        fd = os.open(path, os.O_CREAT | os.O_WRONLY, 0o640)
+        with os.fdopen(fd, 'w') as f:
             f.write(headers)
             for body in self.body_src:
                 f.write(body)

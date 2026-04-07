@@ -58,6 +58,7 @@ add_compile_options(
     "SHELL:$<$<COMPILE_LANGUAGE:ASCEND>:-mllvm -cce-aicore-dcci-insert-for-scalar=false>"
 )
 
+add_compile_definitions(CATLASS_ARCH=2201)
 add_compile_definitions(L2_CACHE_HINT)
 add_compile_definitions(TILING_KEY_VAR)
 
