@@ -109,8 +109,7 @@ bool CheckPermission(std::string_view path)
         return false;
     }
     if ((fileStat.st_mode & S_IWOTH) || (fileStat.st_mode & S_IWGRP)) {
-        LOGE("Path %s cannot be writable by group or other users", pathStr.c_str());
-        return false;
+        LOGW("Path %s is not recommended to be writable by group or other users", pathStr.c_str());
     }
     if (!(fileStat.st_mode & S_IRUSR) && !(fileStat.st_mode & S_IXUSR)) {
         LOGE("Path %s is not readable or executable", pathStr.c_str());
@@ -119,8 +118,8 @@ bool CheckPermission(std::string_view path)
     if (fileStat.st_uid == 0 || fileStat.st_uid == getuid()) {
         return true;
     }
-    LOGE("Path %s is not belong to current user or root", pathStr.c_str());
-    return false;
+    LOGW("Path %s is not belong to current user or root", pathStr.c_str());
+    return true;
 }
 
 bool CheckInvalidChar(std::string_view path)
@@ -206,8 +205,7 @@ bool Metrics::SetOutputPath(std::string_view output)
     // check file security
     if (IsExist(absPath)) {
         if (IsSoftLink(absPath)) {
-            LOGE("--output cannot be a soft link");
-            return false;
+            LOGW("--output should not be a soft link");
         } else if (!IsSafePath(absPath)) {
             return false;
         } else if (std::error_code ec; std::filesystem::is_directory(absPath, ec) && !ec) {

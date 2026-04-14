@@ -79,7 +79,7 @@ class DependencyManager:
         if third:
             self._exec_shell_cmd(base + ["--recursive"] + third, msg="Fetching third-party submodules...")
         if builtin:
-            self._exec_shell_cmd(base + ["--remote"] + builtin, msg="Fetching built-in submodules...")
+            self._exec_shell_cmd(base + builtin, msg="Fetching built-in submodules...")
             for m in builtin:
                 self._download_submodule_recursively(m)
         logging.info("=== Download git submodules end ===")

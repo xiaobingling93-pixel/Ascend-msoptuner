@@ -137,12 +137,10 @@ void RegisterCatlass{operation_type}Operations(Manifest &manifest)
 
         LOGGER.debug(f'generated_dir={generated_dir}')
 
-        if os.path.exists(generated_dir) and not os.path.islink(generated_dir):
+        if os.path.exists(generated_dir):
+            if os.path.islink(generated_dir):
+                LOGGER.warning(f'generated directory is a soft link, which is not recommended to be removed. Please check if the generated directory is correct.')
             shutil.rmtree(generated_dir)
-        elif os.path.islink(generated_dir):
-            raise PermissionError(
-                f'generated directory {generated_dir} is a soft link, which is not allowed to be removed.'
-            )
         else:
             pass
 
