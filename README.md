@@ -20,13 +20,13 @@ MindStudio Ops Tuner（算子Tiling寻优，msOpTuner）是一款用于 CATLASS 
 
 ## 📦 安装指南
 
-介绍msOpTuner工具的环境依赖及安装方式，具体请参见[msOpTuner安装指南](./docs/zh/install_guide/msoptuner_install_guide.md)。
+介绍msOpTuner工具的环境依赖及安装方式，具体请参见《[msOpTuner安装指南](./docs/zh/install_guide/msoptuner_install_guide.md)》。
 
 ## ⚖️ 相关说明
 
-* [《License声明》](./docs/zh/legal/license_notice.md) 
-* [《安全声明》](./docs/zh/legal/security_statement.md) 
-* [《免责声明》](./docs/zh/legal/disclaimer.md)
+🔹《[许可证声明](./docs/zh/legal/license_notice.md)》  
+🔹《[安全声明](./docs/zh/legal/security_statement.md)》  
+🔹《[免责声明](./docs/zh/legal/disclaimer.md)》   
 
 ## 🤝 建议与交流
 
